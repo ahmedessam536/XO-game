@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>لعبة XO - متعددة اللاعبين</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>❌</text></svg>">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    body {
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    
+    .container {
+      width: 100%;
+      max-width: 800px;
+      background: rgba(30, 30, 46, 0.8);
+      border-radius: 20px;
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+      overflow: hidden;
+      padding: 30px;
+      position: relative;
+    }
+    
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      position: relative;
+    }
+    
+    .header h1 {
+      font-size: 2.8rem;
+      background: linear-gradient(45deg, #00b894, #00cec9);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+    
+    .header p {
+      color: #a5b1c2;
+      font-size: 1.1rem;
+    }
+    
+    .game-section {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 30px;
+    }
+    
+    .menu, .controls, .game {
+      flex: 1;
+      min-width: 300px;
+      background: rgba(40, 40, 60, 0.7);
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    }
+    
+    h2 {
+      color: #00cec9;
+      margin-bottom: 20px;
+      text-align: center;
+      font-size: 1.8rem;
+    }
+    
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    
+    button {
+      background: linear-gradient(to right, #00b894, #00cec9);
+      border: none;
+      padding: 15px;
+      color: white;
+      font-size: 1.1rem;
+      cursor: pointer;
+      border-radius: 10px;
+      transition: all 0.3s ease;
+      font-weight: bold;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+    
+    button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3);
+      background: linear-gradient(to right, #00a383, #00b894);
+    }
+    
+    button:active {
+      transform: translateY(0);
+    }
+    
+    .game-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin-top: 15px;
+    }
+    
+    input, select {
+      width: 100%;
+      padding: 14px;
+      border-radius: 10px;
+      border: 2px solid #00cec9;
+      background: rgba(30, 30, 46, 0.7);
+      color: white;
+      font-size: 1rem;
+      margin-bottom: 10px;
+    }
+    
+    input::placeholder {
+      color: #a5b1c2;
+    }
+    
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 15px;
+      margin: 20px auto;
+      max-width: 400px;
+    }
+    
+    .cell {
+      aspect-ratio: 1;
+      background: #2a2a3e;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3.5rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    
+    .cell:hover {
+      background: #3a3a4e;
+      transform: scale(1.03);
+    }
+    
+    .cell.x {
+      color: #00b894;
+    }
+    
+    .cell.o {
+      color: #fdcb6e;
+    }
+    
+    .status {
+      text-align: center;
+      font-size: 1.4rem;
+      margin: 20px 0;
+      min-height: 40px;
+      color: #fdcb6e;
+      font-weight: bold;
+    }
+    
+    .chat {
+      background: rgba(40, 40, 60, 0.7);
+      border-radius: 15px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+    
+    .chat-messages {
+      height: 200px;
+      overflow-y: auto;
+      background: rgba(30, 30, 46, 0.5);
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+    
+    .chat-input-group {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .chat-input {
+      flex: 1;
+      padding: 12px;
+      border-radius: 10px;
+      border: 2px solid #00cec9;
+      background: rgba(30, 30, 46, 0.7);
+      color: white;
+      font-size: 1rem;
+    }
+    
+    .chat-message {
+      margin-bottom: 10px;
+      padding: 8px 12px;
+      background: rgba(0, 206, 201, 0.15);
+      border-radius: 8px;
+    }
+    
+    .chat-message strong {
+      color: #00cec9;
+    }
+    
+    .hidden {
+      display: none;
+    }
+    
+    .instructions {
+      margin-top: 25px;
+      padding: 15px;
+      background: rgba(40, 40, 60, 0.5);
+      border-radius: 10px;
+      border-left: 4px solid #00cec9;
+    }
+    
+    .instructions h3 {
+      color: #00b894;
+      margin-bottom: 10px;
+    }
+    
+    .instructions ul {
+      padding-left: 20px;
+    }
+    
+    .instructions li {
+      margin-bottom: 8px;
+      color: #a5b1c2;
+    }
+    
+    .footer {
+      text-align: center;
+      margin-top: 30px;
+      color: #a5b1c2;
+      font-size: 0.9rem;
+    }
+    
+    .game-info {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 15px;
+      background: rgba(0, 206, 201, 0.1);
+      padding: 10px;
+      border-radius: 8px;
+    }
+    
+    .info-item {
+      text-align: center;
+    }
+    
+    .info-label {
+      font-size: 0.9rem;
+      color: #a5b1c2;
+    }
+    
+    .info-value {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #00cec9;
+    }
+    
+    .room-id-display {
+      background: rgba(0, 206, 201, 0.1);
+      padding: 10px;
+      border-radius: 8px;
+      margin: 15px 0;
+      text-align: center;
+      font-weight: bold;
+    }
+    
+    .copy-btn {
+      background: rgba(0, 206, 201, 0.2);
+      border: 1px solid #00cec9;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-left: 10px;
+      font-size: 0.8rem;
+    }
+    
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 25px;
+      background: rgba(0, 206, 201, 0.9);
+      color: white;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      z-index: 1000;
+      transform: translateX(200%);
+      transition: transform 0.3s ease;
+    }
+    
+    .notification.show {
+      transform: translateX(0);
+    }
+    
+    @media (max-width: 768px) {
+      .game-section {
+        flex-direction: column;
+      }
+      
+      .header h1 {
+        font-size: 2.2rem;
+      }
+      
+      .cell {
+        font-size: 2.5rem;
+      }
+      
+      .game-info {
+        flex-direction: column;
+        gap: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎮 لعبة XO متعددة اللاعبين</h1>
+      <p>تحدي أصدقائك أو العب ضد الذكاء الاصطناعي</p>
+    </div>
+    
+    <div class="game-section">
+      <div id="menu" class="menu">
+        <h2>اختر طريقة اللعب</h2>
+        <div class="btn-group">
+          <button id="local-game-btn">لاعبان على نفس الجهاز</button>
+          <button id="ai-game-btn">العب ضد الكمبيوتر</button>
+          <button id="online-game-btn">العب عبر الإنترنت</button>
+        </div>
+      </div>
+      
+      <div id="ai-options" class="controls hidden">
+        <h2>العب ضد الذكاء الاصطناعي</h2>
+        <label for="difficulty">اختر مستوى الصعوبة:</label>
+        <select id="difficulty">
+          <option value="easy">سهل</option>
+          <option value="medium">متوسط</option>
+          <option value="hard">صعب</option>
+        </select>
+        <div class="game-controls">
+          <button id="start-ai-btn">ابدأ اللعبة</button>
+          <button id="back-from-ai-btn">العودة</button>
+        </div>
+      </div>
+      
+      <div id="online-options" class="controls hidden">
+        <h2>العب عبر الإنترنت</h2>
+        <input id="player-name" type="text" placeholder="اسم اللاعب">
+        <div class="game-controls">
+          <button id="create-room-btn">إنشاء غرفة جديدة</button>
+          <input id="room-id" type="text" placeholder="معرف الغرفة">
+          <button id="join-room-btn">الانضمام إلى غرفة</button>
+          <button id="back-from-online-btn">العودة</button>
+        </div>
+      </div>
+      
+      <div id="game" class="game hidden">
+        <div class="game-info">
+          <div class="info-item">
+            <div class="info-label">طريقة اللعب</div>
+            <div id="game-mode" class="info-value">محلي</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">دور</div>
+            <div id="player-turn" class="info-value">X</div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">اللاعب</div>
+            <div id="player-name-display" class="info-value">-</div>
+          </div>
+        </div>
+        
+        <div id="room-info" class="room-id-display hidden">
+          <span>معرف الغرفة: </span>
+          <span id="room-id-display"></span>
+          <button class="copy-btn" id="copy-room-btn">نسخ</button>
+        </div>
+        
+        <div class="board" id="board"></div>
+        <div id="status" class="status">دورك (X)</div>
+        <div class="game-controls">
+          <button id="restart-btn">إعادة اللعبة</button>
+          <button id="back-to-menu-btn">القائمة الرئيسية</button>
+        </div>
+        
+        <div id="chat" class="chat hidden">
+          <h2>الدردشة</h2>
+          <div id="chat-messages" class="chat-messages"></div>
+          <div class="chat-input-group">
+            <input id="chat-input" type="text" placeholder="اكتب رسالة..." class="chat-input">
+            <button id="send-message-btn">إرسال</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="instructions">
+      <h3>كيفية اللعب:</h3>
+      <ul>
+        <li>اللاعب X يبدأ دائماً باللعب</li>
+        <li>الهدف هو تشكيل خط من ٣ رموز متشابهة (أفقي، رأسي، أو مائل)</li>
+        <li>في اللعب المحلي: يتناوب اللاعبان على نفس الجهاز</li>
+        <li>في اللعب ضد الكمبيوتر: اختر مستوى الصعوبة المناسب</li>
+        <li>في اللعب عبر الإنترنت: أنشئ غرفة أو انضم باستخدام معرف الغرفة</li>
+      </ul>
+    </div>
+    
+    <div class="footer">
+      تم تطوير اللعبة باستخدام HTML5 و CSS3 و JavaScript
+      <br>
+      <br>
+      Developer: Ahmed Essam
+    </div>
+  </div>
+
+  <div class="notification" id="notification">تم نسخ معرف الغرفة!</div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+  <script>
+    // Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyD21zCfFzzGm_g2BijnVXGnDt-5Tu7B3Cw",
+      authDomain: "xo-game-32ed0.firebaseapp.com",
+      databaseURL: "https://xo-game-32ed0-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "xo-game-32ed0",
+      storageBucket: "xo-game-32ed0.appspot.com",
+      messagingSenderId: "276733885219",
+      appId: "1:276733885219:web:09095701dc1d19086aaa96",
+      measurementId: "G-CCLJG6FQ4P"
+    };
+
+    // Initialize Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    // Game state
+    let board = [];
+    let currentPlayer = "X";
+    let gameMode = "";
+    let playerName = "";
+    let roomId = "";
+    let mySymbol = "";
+    let roomRef = null;
+    let chatRef = null;
+    
+    // DOM elements
+    const statusText = document.getElementById("status");
+    const boardEl = document.getElementById("board");
+    const difficultySelect = document.getElementById("difficulty");
+    const playerNameInput = document.getElementById("player-name");
+    const roomIdInput = document.getElementById("room-id");
+    const roomIdDisplay = document.getElementById("room-id-display");
+    const roomInfo = document.getElementById("room-info");
+    const notification = document.getElementById("notification");
+    
+    // Initialize when DOM is loaded
+    document.addEventListener('DOMContentLoaded', () => {
+      // Set up event listeners
+      document.getElementById("local-game-btn").addEventListener('click', showLocalGame);
+      document.getElementById("ai-game-btn").addEventListener('click', showAIOptions);
+      document.getElementById("online-game-btn").addEventListener('click', showOnlineOptions);
+      document.getElementById("start-ai-btn").addEventListener('click', startAIGame);
+      document.getElementById("back-from-ai-btn").addEventListener('click', showMenu);
+      document.getElementById("create-room-btn").addEventListener('click', createRoom);
+      document.getElementById("join-room-btn").addEventListener('click', joinRoom);
+      document.getElementById("back-from-online-btn").addEventListener('click', showMenu);
+      document.getElementById("restart-btn").addEventListener('click', restartGame);
+      document.getElementById("back-to-menu-btn").addEventListener('click', showMenu);
+      document.getElementById("copy-room-btn").addEventListener('click', copyRoomId);
+      document.getElementById("send-message-btn").addEventListener('click', sendMessage);
+      
+      // Handle Enter key in chat
+      document.getElementById("chat-input").addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') sendMessage();
+      });
+      
+      // Handle Enter key in room ID
+      roomIdInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') joinRoom();
+      });
+      
+      showMenu();
+    });
+    
+    // UI navigation
+    function showMenu() {
+      hideAllSections();
+      document.getElementById("menu").classList.remove("hidden");
+      updateGameInfo();
+    }
+    
+    function showLocalGame() {
+      gameMode = "local";
+      playerName = "لاعب محلي";
+      hideAllSections();
+      document.getElementById("game").classList.remove("hidden");
+      document.getElementById("chat").classList.add("hidden");
+      roomInfo.classList.add("hidden");
+      startGame();
+      updateGameInfo();
+    }
+    
+    function showAIOptions() {
+      hideAllSections();
+      document.getElementById("ai-options").classList.remove("hidden");
+    }
+    
+    function showOnlineOptions() {
+      hideAllSections();
+      document.getElementById("online-options").classList.remove("hidden");
+    }
+    
+    function hideAllSections() {
+      ["menu", "ai-options", "online-options", "game"].forEach(id => {
+        document.getElementById(id).classList.add("hidden");
+      });
+    }
+    
+    // Start AI game
+    function startAIGame() {
+      gameMode = "ai";
+      playerName = "لاعب ضد الكمبيوتر";
+      hideAllSections();
+      document.getElementById("game").classList.remove("hidden");
+      document.getElementById("chat").classList.add("hidden");
+      roomInfo.classList.add("hidden");
+      startGame();
+      updateGameInfo();
+    }
+    
+    // Start game
+    function startGame() {
+      board = Array(9).fill("");
+      currentPlayer = "X";
+      
+      if (gameMode === "online") {
+        statusText.textContent = "جارٍ الاتصال...";
+      } else {
+        statusText.textContent = gameMode === "ai" && currentPlayer === "O" ? 
+          "دور الكمبيوتر (O)" : "دورك (X)";
+      }
+      
+      renderBoard();
+    }
+    
+    // Render board
+    function renderBoard() {
+      boardEl.innerHTML = "";
+      board.forEach((val, i) => {
+        const cell = document.createElement("div");
+        cell.className = `cell ${val === 'X' ? 'x' : val === 'O' ? 'o' : ''}`;
+        cell.textContent = val;
+        cell.onclick = () => makeMove(i);
+        boardEl.appendChild(cell);
+      });
+    }
+    
+    // Move logic
+    function makeMove(index) {
+      if (board[index] !== "" || checkWinner()) return;
+      if (gameMode === "online" && currentPlayer !== mySymbol) return;
+      
+      board[index] = currentPlayer;
+      
+      // Update the board
+      renderBoard();
+      
+      // Check for winner or draw
+      const winner = checkWinner();
+      if (winner) {
+        if (winner === "draw") {
+          statusText.textContent = "تعادل!";
+        } else {
+          statusText.textContent = winner === "X" ? "فاز اللاعب X!" : 
+                                  winner === "O" ? "فاز اللاعب O!" : "";
+        }
+        return;
+      }
+      
+      // Switch player
+      currentPlayer = currentPlayer === "X" ? "O" : "X";
+      
+      // Update status
+      if (gameMode === "ai" && currentPlayer === "O") {
+        statusText.textContent = "دور الكمبيوتر (O)...";
+        setTimeout(aiMove, 700);
+      } else {
+        statusText.textContent = `دورك (${currentPlayer})`;
+      }
+      
+      updateGameInfo();
+    }
+    
+    // AI Move
+    function aiMove() {
+      const diff = difficultySelect.value;
+      let move;
+      
+      // Get all empty cells
+      const emptyCells = board.map((val, i) => val === "" ? i : null).filter(v => v !== null);
+      
+      if (emptyCells.length === 0) return;
+      
+      if (diff === "easy") {
+        // Random move
+        move = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+      } else if (diff === "medium") {
+        // Try to win or block player
+        move = getMediumAIMove();
+      } else {
+        // Hard - Minimax algorithm
+        move = getBestMove();
+      }
+      
+      // Make the move
+      board[move] = "O";
+      renderBoard();
+      
+      // Check for winner or draw
+      const winner = checkWinner();
+      if (winner) {
+        if (winner === "draw") {
+          statusText.textContent = "تعادل!";
+        } else {
+          statusText.textContent = winner === "O" ? "فاز الكمبيوتر!" : "فزت!";
+        }
+      } else {
+        currentPlayer = "X";
+        statusText.textContent = "دورك (X)";
+      }
+      
+      updateGameInfo();
+    }
+    
+    function getMediumAIMove() {
+      // Try to win
+      for (let i = 0; i < 9; i++) {
+        if (board[i] === "") {
+          board[i] = "O";
+          if (checkWinner() === "O") {
+            board[i] = "";
+            return i;
+          }
+          board[i] = "";
+        }
+      }
+      
+      // Block player if about to win
+      for (let i = 0; i < 9; i++) {
+        if (board[i] === "") {
+          board[i] = "X";
+          if (checkWinner() === "X") {
+            board[i] = "";
+            return i;
+          }
+          board[i] = "";
+        }
+      }
+      
+      // Take center if available
+      if (board[4] === "") return 4;
+      
+      // Take a corner if available
+      const corners = [0, 2, 6, 8];
+      for (const corner of corners) {
+        if (board[corner] === "") return corner;
+      }
+      
+      // Take any available edge
+      const edges = [1, 3, 5, 7];
+      for (const edge of edges) {
+        if (board[edge] === "") return edge;
+      }
+      
+      // Fallback to random
+      const empty = board.map((v, i) => v === "" ? i : null).filter(v => v !== null);
+      return empty[0];
+    }
+    
+    function getBestMove() {
+      // Simple best move for hard level
+      // Prefer center, then corners, then edges
+      if (board[4] === "") return 4;
+      
+      const corners = [0, 2, 6, 8];
+      for (const corner of corners) {
+        if (board[corner] === "") return corner;
+      }
+      
+      const edges = [1, 3, 5, 7];
+      for (const edge of edges) {
+        if (board[edge] === "") return edge;
+      }
+      
+      return 0; // Fallback
+    }
+    
+    // Winner check
+    function checkWinner() {
+      const wins = [
+        [0,1,2],[3,4,5],[6,7,8], // Rows
+        [0,3,6],[1,4,7],[2,5,8], // Columns
+        [0,4,8],[2,4,6]          // Diagonals
+      ];
+      
+      for (let [a, b, c] of wins) {
+        if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+          return board[a];
+        }
+      }
+      
+      // Check for draw
+      if (!board.includes("")) {
+        return "draw";
+      }
+      
+      return null;
+    }
+    
+    // Restart game
+    function restartGame() {
+      if (gameMode === "online" && roomRef) {
+        // Reset online game
+        roomRef.update({
+          board: Array(9).fill(""),
+          currentPlayer: "X",
+          status: "playing"
+        });
+      } else {
+        // Reset local or AI game
+        startGame();
+      }
+    }
+    
+    // Online setup
+    function createRoom() {
+      playerName = playerNameInput.value || "اللاعب 1";
+      roomId = Math.random().toString(36).substring(2, 10).toUpperCase();
+      mySymbol = "X";
+      gameMode = "online";
+      
+      hideAllSections();
+      document.getElementById("game").classList.remove("hidden");
+      document.getElementById("chat").classList.remove("hidden");
+      roomInfo.classList.remove("hidden");
+      
+      statusText.textContent = `جارٍ إنشاء الغرفة...`;
+      document.getElementById("player-name-display").textContent = playerName;
+      roomIdDisplay.textContent = roomId;
+      
+      // Create room in Firebase
+      roomRef = database.ref(`rooms/${roomId}`);
+      chatRef = database.ref(`rooms/${roomId}/chat`);
+      
+      roomRef.set({
+        board: Array(9).fill(""),
+        currentPlayer: "X",
+        players: { [playerName]: "X" },
+        status: "waiting"
+      });
+      
+      // Set up realtime updates
+      setupOnlineGame();
+      updateGameInfo();
+    }
+    
+    function joinRoom() {
+      playerName = playerNameInput.value || "اللاعب 2";
+      roomId = roomIdInput.value;
+      
+      if (!roomId) {
+        statusText.textContent = "يجب إدخال معرف الغرفة";
+        return;
+      }
+      
+      mySymbol = "O";
+      gameMode = "online";
+      
+      hideAllSections();
+      document.getElementById("game").classList.remove("hidden");
+      document.getElementById("chat").classList.remove("hidden");
+      roomInfo.classList.add("hidden");
+      
+      statusText.textContent = `جارٍ الانضمام إلى الغرفة...`;
+      document.getElementById("player-name-display").textContent = playerName;
+      
+      // Join room in Firebase
+      roomRef = database.ref(`rooms/${roomId}`);
+      chatRef = database.ref(`rooms/${roomId}/chat`);
+      
+      // Set up realtime updates
+      setupOnlineGame();
+      updateGameInfo();
+    }
+    
+    function setupOnlineGame() {
+      // Listen for game updates
+      roomRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (!data) {
+          statusText.textContent = "الغرفة غير موجودة أو تم إغلاقها";
+          return;
+        }
+        
+        board = data.board || Array(9).fill("");
+        currentPlayer = data.currentPlayer || "X";
+        
+        // Update UI
+        renderBoard();
+        
+        const winner = checkWinner();
+        if (winner) {
+          if (winner === "draw") {
+            statusText.textContent = "تعادل!";
+          } else {
+            statusText.textContent = winner === "X" ? "فاز اللاعب X!" : "فاز اللاعب O!";
+          }
+        } else {
+          statusText.textContent = currentPlayer === mySymbol ? "دورك" : "دور الخصم";
+        }
+        
+        // Update player turn display
+        document.getElementById("player-turn").textContent = currentPlayer;
+      });
+      
+      // Listen for chat updates
+      chatRef.on('child_added', (snapshot) => {
+        const msg = snapshot.val();
+        const chatMessages = document.getElementById("chat-messages");
+        const messageEl = document.createElement("div");
+        messageEl.className = "chat-message";
+        messageEl.innerHTML = `<strong>${msg.sender}:</strong> ${msg.text}`;
+        chatMessages.appendChild(messageEl);
+        
+        // Scroll to bottom
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      });
+      
+      // Update status
+      statusText.textContent = "تم الاتصال! انتظر بدء اللعبة";
+      
+      // If joining, update players list
+      if (mySymbol === "O") {
+        roomRef.child("players").update({ [playerName]: "O" });
+        roomRef.update({ status: "playing" });
+      }
+    }
+    
+    function sendMessage() {
+      const input = document.getElementById("chat-input");
+      const message = input.value.trim();
+      
+      if (message && chatRef) {
+        chatRef.push({
+          sender: playerName,
+          text: message,
+          timestamp: firebase.database.ServerValue.TIMESTAMP
+        });
+        
+        // Clear input
+        input.value = "";
+      }
+    }
+    
+    function updateGameInfo() {
+      document.getElementById("game-mode").textContent = 
+        gameMode === "local" ? "محلي" : 
+        gameMode === "ai" ? "ضد الكمبيوتر" : 
+        "عبر الإنترنت";
+      
+      document.getElementById("player-turn").textContent = currentPlayer;
+      document.getElementById("player-name-display").textContent = playerName || "-";
+    }
+    
+    function copyRoomId() {
+      navigator.clipboard.writeText(roomId).then(() => {
+        // Show notification
+        notification.classList.add("show");
+        setTimeout(() => {
+          notification.classList.remove("show");
+        }, 2000);
+      });
+    }
+  </script>
+</body>
+</html>
