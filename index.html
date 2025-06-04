@@ -307,6 +307,26 @@
       transform: translateX(0);
     }
     
+    .connection-status {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    .connection-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #e74c3c;
+    }
+    
+    .connection-dot.connected {
+      background: #2ecc71;
+    }
+    
     @media (max-width: 768px) {
       .game-section {
         flex-direction: column;
@@ -332,6 +352,10 @@
     <div class="header">
       <h1>🎮 لعبة XO متعددة اللاعبين</h1>
       <p>تحدي أصدقائك أو العب ضد الذكاء الاصطناعي</p>
+      <div class="connection-status">
+        <div class="connection-dot" id="connection-dot"></div>
+        <span id="connection-status">جاري الاتصال...</span>
+      </div>
     </div>
     
     <div class="game-section">
@@ -424,7 +448,8 @@
       تم تطوير اللعبة باستخدام HTML5 و CSS3 و JavaScript
       <br>
       <br>
-      Developer: Ahmed Essam..
+      Developer: Ahmed Essam
+
     </div>
   </div>
 
@@ -435,7 +460,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
   <script>
-    // Firebase configuration
+    // Firebase configuration - يجب استبدالها بإعدادات مشروعك
     const firebaseConfig = {
       apiKey: "AIzaSyD21zCfFzzGm_g2BijnVXGnDt-5Tu7B3Cw",
       authDomain: "xo-game-32ed0.firebaseapp.com",
@@ -460,6 +485,7 @@
     let mySymbol = "";
     let roomRef = null;
     let chatRef = null;
+    let isConnected = false;
     
     // DOM elements
     const statusText = document.getElementById("status");
@@ -470,6 +496,8 @@
     const roomIdDisplay = document.getElementById("room-id-display");
     const roomInfo = document.getElementById("room-info");
     const notification = document.getElementById("notification");
+    const connectionDot = document.getElementById("connection-dot");
+    const connectionStatus = document.getElementById("connection-status");
     
     // Initialize when DOM is loaded
     document.addEventListener('DOMContentLoaded', () => {
@@ -497,8 +525,23 @@
         if (e.key === 'Enter') joinRoom();
       });
       
+      // Monitor Firebase connection
+      monitorConnection();
+      
       showMenu();
     });
+    
+    // Monitor Firebase connection status
+    function monitorConnection() {
+      const connectedRef = database.ref(".info/connected");
+      connectedRef.on('value', (snap) => {
+        isConnected = snap.val();
+        connectionDot.className = isConnected ? 
+          "connection-dot connected" : "connection-dot";
+        connectionStatus.textContent = isConnected ? 
+          "متصل" : "غير متصل";
+      });
+    }
     
     // UI navigation
     function showMenu() {
@@ -592,6 +635,14 @@
           statusText.textContent = winner === "X" ? "فاز اللاعب X!" : 
                                   winner === "O" ? "فاز اللاعب O!" : "";
         }
+        
+        // Update online game state
+        if (gameMode === "online" && roomRef) {
+          roomRef.update({
+            board: board,
+            status: winner === "draw" ? "draw" : "win"
+          });
+        }
         return;
       }
       
@@ -604,6 +655,14 @@
         setTimeout(aiMove, 700);
       } else {
         statusText.textContent = `دورك (${currentPlayer})`;
+      }
+      
+      // Update online game state
+      if (gameMode === "online" && roomRef) {
+        roomRef.update({
+          board: board,
+          currentPlayer: currentPlayer
+        });
       }
       
       updateGameInfo();
@@ -808,7 +867,6 @@
       
       // Set up realtime updates
       setupOnlineGame();
-      updateGameInfo();
     }
     
     function setupOnlineGame() {
@@ -854,14 +912,15 @@
         chatMessages.scrollTop = chatMessages.scrollHeight;
       });
       
-      // Update status
-      statusText.textContent = "تم الاتصال! انتظر بدء اللعبة";
-      
       // If joining, update players list
       if (mySymbol === "O") {
         roomRef.child("players").update({ [playerName]: "O" });
         roomRef.update({ status: "playing" });
       }
+      
+      // Update status
+      statusText.textContent = "تم الاتصال! انتظر بدء اللعبة";
+      updateGameInfo();
     }
     
     function sendMessage() {
