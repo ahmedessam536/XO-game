@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>لعبة XO - متعددة اللاعبين</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لعبة XO متعددة اللاعبين</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>❌</text></svg>">
   <style>
     * {
@@ -327,6 +327,47 @@
       background: #2ecc71;
     }
     
+    .players-list {
+      margin-top: 15px;
+      padding: 10px;
+      background: rgba(0, 206, 201, 0.1);
+      border-radius: 8px;
+    }
+    
+    .player-badge {
+      display: inline-block;
+      padding: 5px 10px;
+      background: rgba(0, 206, 201, 0.2);
+      border-radius: 5px;
+      margin: 5px;
+    }
+    
+    .debug-info {
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      max-width: 300px;
+      display: none;
+    }
+    
+    .debug-toggle {
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+      background: #00cec9;
+      color: white;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      z-index: 1000;
+    }
+    
     @media (max-width: 768px) {
       .game-section {
         flex-direction: column;
@@ -415,6 +456,11 @@
           <button class="copy-btn" id="copy-room-btn">نسخ</button>
         </div>
         
+        <div id="players-container" class="players-list hidden">
+          <h3>اللاعبون في الغرفة:</h3>
+          <div id="players-list"></div>
+        </div>
+        
         <div class="board" id="board"></div>
         <div id="status" class="status">دورك (X)</div>
         <div class="game-controls">
@@ -446,14 +492,13 @@
     
     <div class="footer">
       تم تطوير اللعبة باستخدام HTML5 و CSS3 و JavaScript
-      <br>
-      <br>
-      Developer: Ahmed Essam
-
     </div>
   </div>
 
   <div class="notification" id="notification">تم نسخ معرف الغرفة!</div>
+  
+  <button class="debug-toggle" id="debug-toggle">عرض معلومات التصحيح</button>
+  <div class="debug-info" id="debug-info"></div>
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -485,6 +530,7 @@
     let mySymbol = "";
     let roomRef = null;
     let chatRef = null;
+    let playersRef = null;
     let isConnected = false;
     
     // DOM elements
@@ -495,9 +541,13 @@
     const roomIdInput = document.getElementById("room-id");
     const roomIdDisplay = document.getElementById("room-id-display");
     const roomInfo = document.getElementById("room-info");
+    const playersContainer = document.getElementById("players-container");
+    const playersList = document.getElementById("players-list");
     const notification = document.getElementById("notification");
     const connectionDot = document.getElementById("connection-dot");
     const connectionStatus = document.getElementById("connection-status");
+    const debugInfo = document.getElementById("debug-info");
+    const debugToggle = document.getElementById("debug-toggle");
     
     // Initialize when DOM is loaded
     document.addEventListener('DOMContentLoaded', () => {
@@ -514,6 +564,7 @@
       document.getElementById("back-to-menu-btn").addEventListener('click', showMenu);
       document.getElementById("copy-room-btn").addEventListener('click', copyRoomId);
       document.getElementById("send-message-btn").addEventListener('click', sendMessage);
+      debugToggle.addEventListener('click', toggleDebug);
       
       // Handle Enter key in chat
       document.getElementById("chat-input").addEventListener('keypress', (e) => {
@@ -531,6 +582,27 @@
       showMenu();
     });
     
+    // Toggle debug info
+    function toggleDebug() {
+      debugInfo.style.display = debugInfo.style.display === 'block' ? 'none' : 'block';
+      updateDebugInfo();
+    }
+    
+    // Update debug info
+    function updateDebugInfo() {
+      debugInfo.innerHTML = `
+        <strong>معلومات التصحيح:</strong>
+        <div>حالة الاتصال: ${isConnected ? 'متصل' : 'غير متصل'}</div>
+        <div>وضع اللعبة: ${gameMode}</div>
+        <div>معرف الغرفة: ${roomId || 'لا يوجد'}</div>
+        <div>رمز اللاعب: ${mySymbol || 'لا يوجد'}</div>
+        <div>اسم اللاعب: ${playerName || 'لا يوجد'}</div>
+        <div>اللاعب الحالي: ${currentPlayer}</div>
+        <div>اللوحة: ${board.join(',')}</div>
+        <div>مرجع الغرفة: ${roomRef ? 'موجود' : 'غير موجود'}</div>
+      `;
+    }
+    
     // Monitor Firebase connection status
     function monitorConnection() {
       const connectedRef = database.ref(".info/connected");
@@ -540,14 +612,30 @@
           "connection-dot connected" : "connection-dot";
         connectionStatus.textContent = isConnected ? 
           "متصل" : "غير متصل";
+        updateDebugInfo();
       });
     }
     
     // UI navigation
     function showMenu() {
+      // Clean up any existing Firebase listeners
+      if (roomRef) {
+        roomRef.off();
+        roomRef = null;
+      }
+      if (chatRef) {
+        chatRef.off();
+        chatRef = null;
+      }
+      if (playersRef) {
+        playersRef.off();
+        playersRef = null;
+      }
+      
       hideAllSections();
       document.getElementById("menu").classList.remove("hidden");
       updateGameInfo();
+      updateDebugInfo();
     }
     
     function showLocalGame() {
@@ -557,18 +645,22 @@
       document.getElementById("game").classList.remove("hidden");
       document.getElementById("chat").classList.add("hidden");
       roomInfo.classList.add("hidden");
+      playersContainer.classList.add("hidden");
       startGame();
       updateGameInfo();
+      updateDebugInfo();
     }
     
     function showAIOptions() {
       hideAllSections();
       document.getElementById("ai-options").classList.remove("hidden");
+      updateDebugInfo();
     }
     
     function showOnlineOptions() {
       hideAllSections();
       document.getElementById("online-options").classList.remove("hidden");
+      updateDebugInfo();
     }
     
     function hideAllSections() {
@@ -585,8 +677,10 @@
       document.getElementById("game").classList.remove("hidden");
       document.getElementById("chat").classList.add("hidden");
       roomInfo.classList.add("hidden");
+      playersContainer.classList.add("hidden");
       startGame();
       updateGameInfo();
+      updateDebugInfo();
     }
     
     // Start game
@@ -602,6 +696,7 @@
       }
       
       renderBoard();
+      updateDebugInfo();
     }
     
     // Render board
@@ -619,7 +714,10 @@
     // Move logic
     function makeMove(index) {
       if (board[index] !== "" || checkWinner()) return;
-      if (gameMode === "online" && currentPlayer !== mySymbol) return;
+      if (gameMode === "online" && currentPlayer !== mySymbol) {
+        showNotification("ليس دورك الآن!");
+        return;
+      }
       
       board[index] = currentPlayer;
       
@@ -666,6 +764,7 @@
       }
       
       updateGameInfo();
+      updateDebugInfo();
     }
     
     // AI Move
@@ -707,6 +806,7 @@
       }
       
       updateGameInfo();
+      updateDebugInfo();
     }
     
     function getMediumAIMove() {
@@ -807,6 +907,7 @@
         // Reset local or AI game
         startGame();
       }
+      updateDebugInfo();
     }
     
     // Online setup
@@ -820,6 +921,7 @@
       document.getElementById("game").classList.remove("hidden");
       document.getElementById("chat").classList.remove("hidden");
       roomInfo.classList.remove("hidden");
+      playersContainer.classList.remove("hidden");
       
       statusText.textContent = `جارٍ إنشاء الغرفة...`;
       document.getElementById("player-name-display").textContent = playerName;
@@ -828,25 +930,30 @@
       // Create room in Firebase
       roomRef = database.ref(`rooms/${roomId}`);
       chatRef = database.ref(`rooms/${roomId}/chat`);
+      playersRef = database.ref(`rooms/${roomId}/players`);
       
-      roomRef.set({
+      const roomData = {
         board: Array(9).fill(""),
         currentPlayer: "X",
-        players: { [playerName]: "X" },
-        status: "waiting"
-      });
+        status: "waiting",
+        createdAt: firebase.database.ServerValue.TIMESTAMP
+      };
+      
+      roomRef.set(roomData);
+      playersRef.set({ [playerName]: "X" });
       
       // Set up realtime updates
       setupOnlineGame();
       updateGameInfo();
+      updateDebugInfo();
     }
     
     function joinRoom() {
       playerName = playerNameInput.value || "اللاعب 2";
-      roomId = roomIdInput.value;
+      roomId = roomIdInput.value.trim();
       
       if (!roomId) {
-        statusText.textContent = "يجب إدخال معرف الغرفة";
+        showNotification("يجب إدخال معرف الغرفة");
         return;
       }
       
@@ -857,6 +964,7 @@
       document.getElementById("game").classList.remove("hidden");
       document.getElementById("chat").classList.remove("hidden");
       roomInfo.classList.add("hidden");
+      playersContainer.classList.remove("hidden");
       
       statusText.textContent = `جارٍ الانضمام إلى الغرفة...`;
       document.getElementById("player-name-display").textContent = playerName;
@@ -864,9 +972,11 @@
       // Join room in Firebase
       roomRef = database.ref(`rooms/${roomId}`);
       chatRef = database.ref(`rooms/${roomId}/chat`);
+      playersRef = database.ref(`rooms/${roomId}/players`);
       
       // Set up realtime updates
       setupOnlineGame();
+      updateDebugInfo();
     }
     
     function setupOnlineGame() {
@@ -875,6 +985,7 @@
         const data = snapshot.val();
         if (!data) {
           statusText.textContent = "الغرفة غير موجودة أو تم إغلاقها";
+          showNotification("الغرفة غير موجودة!");
           return;
         }
         
@@ -897,6 +1008,24 @@
         
         // Update player turn display
         document.getElementById("player-turn").textContent = currentPlayer;
+        updateDebugInfo();
+      });
+      
+      // Listen for players updates
+      playersRef.on('value', (snapshot) => {
+        const players = snapshot.val();
+        playersList.innerHTML = "";
+        
+        if (players) {
+          Object.keys(players).forEach(player => {
+            const symbol = players[player];
+            const playerEl = document.createElement("div");
+            playerEl.className = "player-badge";
+            playerEl.textContent = `${player} (${symbol})`;
+            playersList.appendChild(playerEl);
+          });
+        }
+        updateDebugInfo();
       });
       
       // Listen for chat updates
@@ -914,13 +1043,22 @@
       
       // If joining, update players list
       if (mySymbol === "O") {
-        roomRef.child("players").update({ [playerName]: "O" });
-        roomRef.update({ status: "playing" });
+        playersRef.update({ [playerName]: "O" })
+          .then(() => {
+            roomRef.update({ 
+              status: "playing"
+            });
+          })
+          .catch((error) => {
+            console.error("Error updating players:", error);
+            showNotification("حدث خطأ في الانضمام للغرفة");
+          });
       }
       
       // Update status
       statusText.textContent = "تم الاتصال! انتظر بدء اللعبة";
       updateGameInfo();
+      updateDebugInfo();
     }
     
     function sendMessage() {
@@ -951,12 +1089,16 @@
     
     function copyRoomId() {
       navigator.clipboard.writeText(roomId).then(() => {
-        // Show notification
-        notification.classList.add("show");
-        setTimeout(() => {
-          notification.classList.remove("show");
-        }, 2000);
+        showNotification("تم نسخ معرف الغرفة!");
       });
+    }
+    
+    function showNotification(message) {
+      notification.textContent = message;
+      notification.classList.add("show");
+      setTimeout(() => {
+        notification.classList.remove("show");
+      }, 2000);
     }
   </script>
 </body>
